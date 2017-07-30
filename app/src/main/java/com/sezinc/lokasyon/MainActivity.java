@@ -3,6 +3,7 @@ package com.sezinc.lokasyon;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.location.LocationListener;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -21,6 +22,7 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.PendingResult;
 import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.places.PlaceLikelihood;
 import com.google.android.gms.location.places.PlaceLikelihoodBuffer;
@@ -36,7 +38,8 @@ import com.google.android.gms.maps.model.MarkerOptions;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks,
-        GoogleApiClient.OnConnectionFailedListener  {
+        GoogleApiClient.OnConnectionFailedListener,
+        LocationListener {
 
     private GoogleMap map;
     //Google play servis kütüphaneleri kullanılmak istendiğinde "Google Api Client" örneği tanımlanır.
@@ -53,7 +56,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private Location mLastKnownLocation;
     private CameraPosition mCameraPosition;
     private static final String TAG = MainActivity.class.getSimpleName();
+//Lokasyonu yazılı olarak vermek için
+protected Location mLastLocation;
+    protected TextView mLatitudeText;
+    protected TextView mLongitudeText;
 
+    private final String LOG_TAG ="TestApp";
+    private LocationRequest mLocationRequest;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -70,14 +79,31 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .addApi(Places.PLACE_DETECTION_API)
                 .build();
         mGoogleApiClient.connect();
+//Enlem Boylam bilgisi
+        mLatitudeText = (TextView) findViewById((R.id.latitude_text));
+        mLongitudeText = (TextView) findViewById((R.id.longitude_text));
 
-
+//Haritanın atanması
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
     }
+    @Override
+    protected void onStart() {
+        super.onStart();
+        // Googleapiclient'a bağlanır.
+        mGoogleApiClient.connect();
+    }
 
 
+    @Override
+    protected void onStop() {
+        super.onStop();
+        // Kullanıcı geçersiz kıldığında hala bağlı ise GoogleApiClient bağlanısı sonlandırılır.
+        if (mGoogleApiClient.isConnected()) {
+            mGoogleApiClient.disconnect();
+        }
+    }
 
     /**
      * Google Play services client başarılı bir şekilde bağlandığında haritayı kurar.
@@ -87,15 +113,29 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
+//        mLocationRequest = LocationRequest.create();
+//        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+//        mLocationRequest.setInterval(10); // Update location every second
+
+     //   mLastLocation = LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+       // mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient); //LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+
     }
 
     @Override
     public void onConnectionSuspended(int i) {
-
+        Log.i(LOG_TAG, "GoogleApiClient bağlantısı askıya alındı");
     }
 
     @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
+    public void onConnectionFailed(ConnectionResult connectionResult) {
+        Log.i(LOG_TAG, "GoogleApiClient bağlantısı koptu");
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+        Log.i(LOG_TAG, location.toString());
 
     }
 
@@ -115,6 +155,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         // Hali hazır konumu alır ve haritanın pozisyonunu belirler
         getDeviceLocation();
+
+
+
     }
 
     private void updateLocationUI() {
@@ -123,7 +166,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
     /*
-     *Lokasyon izni isteği. Aracın lokasyonunu alabiliriz. İzin isteğinin sonucu callback ile ele alınıyor.
+     *Lokasyon izni isteği. Cihazın lokasyonunu alabiliriz. İzin isteğinin sonucu callback ile ele alınıyor.
      * onRequestPermissionsResult.
      */
         if (ContextCompat.checkSelfPermission(this.getApplicationContext(),
@@ -139,6 +182,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (mLocationPermissionGranted) {
             map.setMyLocationEnabled(true);
             map.getUiSettings().setMyLocationButtonEnabled(true);
+
         } else {
             map.setMyLocationEnabled(false);
             map.getUiSettings().setMyLocationButtonEnabled(false);
@@ -163,6 +207,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (mLocationPermissionGranted) {
             mLastKnownLocation = LocationServices.FusedLocationApi
                     .getLastLocation(mGoogleApiClient);
+
+
         }
 
         // Haritanın kamera pozisyonunu cihazın şimdiki konumuna ayarlar.
@@ -173,9 +219,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     new LatLng(mLastKnownLocation.getLatitude(),
                             mLastKnownLocation.getLongitude()), DEFAULT_ZOOM));
         } else {
-            Log.d(TAG, "Şimdiki konum bilgileri boş. Default kullanma");
+            Log.d(TAG, "Şimdiki konum bilgileri boş. Default kullanım");
             map.moveCamera(CameraUpdateFactory.newLatLngZoom(mDefaultLocation, DEFAULT_ZOOM));
             map.getUiSettings().setMyLocationButtonEnabled(false);
+        }
+
+        if (mLastKnownLocation != null) {
+            mLatitudeText.setText(String.valueOf(mLastKnownLocation.getLatitude()));
+            mLongitudeText.setText(String.valueOf(mLastKnownLocation.getLongitude()));
         }
     }
 // İzin isteğinin sonucunu ele alır
@@ -194,5 +245,22 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         }
         updateLocationUI();
+    }
+
+
+
+    @Override
+    public void onStatusChanged(String provider, int status, Bundle extras) {
+
+    }
+
+    @Override
+    public void onProviderEnabled(String provider) {
+
+    }
+
+    @Override
+    public void onProviderDisabled(String provider) {
+
     }
 }
