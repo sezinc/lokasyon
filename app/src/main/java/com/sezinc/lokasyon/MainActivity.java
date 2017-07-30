@@ -1,12 +1,16 @@
 package com.sezinc.lokasyon;
 
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
+import android.icu.text.DecimalFormat;
 import android.location.Location;
 import android.location.LocationListener;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
@@ -14,9 +18,11 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -35,11 +41,12 @@ import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.vision.barcode.Barcode;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
-        LocationListener {
+        LocationListener{
 
     private GoogleMap map;
     //Google play servis kütüphaneleri kullanılmak istendiğinde "Google Api Client" örneği tanımlanır.
@@ -63,6 +70,8 @@ protected Location mLastLocation;
 
     private final String LOG_TAG ="TestApp";
     private LocationRequest mLocationRequest;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -140,6 +149,8 @@ protected Location mLastLocation;
     }
 
 
+
+
     /**
      * Hazır olduğunda haritayı çalıştırır.
      * Bu callback Harita kullanıma hazır olduğunda tetiklenir.
@@ -155,7 +166,27 @@ protected Location mLastLocation;
 
         // Hali hazır konumu alır ve haritanın pozisyonunu belirler
         getDeviceLocation();
+// Haritaya dokunduğunda enlem boylam bilgisi verir
 
+        map.setOnMapClickListener(new GoogleMap.OnMapClickListener(){
+            @RequiresApi(api = Build.VERSION_CODES.N)
+            @Override
+            public void onMapClick(LatLng point){
+                //Haritada tıklanan noktanın enlem boylamını alır
+                double pointLat=point.latitude;
+                double pointLong= point.longitude;
+                //Uygun formatta bir string e atar.
+                DecimalFormat precision = new DecimalFormat("#,#######");
+                String txtLatLong= String.valueOf(pointLat);// precision.format(pointLat).toString();
+                txtLatLong+= ", ";
+                txtLatLong += String.valueOf(pointLong);//precision.format(pointLong).toString();
+
+              map.addMarker(new MarkerOptions().position(point).title(txtLatLong));
+                map.animateCamera(CameraUpdateFactory.newLatLng(point));
+
+
+            }
+        });
 
 
     }
@@ -223,7 +254,7 @@ protected Location mLastLocation;
             map.moveCamera(CameraUpdateFactory.newLatLngZoom(mDefaultLocation, DEFAULT_ZOOM));
             map.getUiSettings().setMyLocationButtonEnabled(false);
         }
-
+//Bulunduğumuz yerin enlem boylam bilgisi
         if (mLastKnownLocation != null) {
             mLatitudeText.setText(String.valueOf(mLastKnownLocation.getLatitude()));
             mLongitudeText.setText(String.valueOf(mLastKnownLocation.getLongitude()));
@@ -263,4 +294,6 @@ protected Location mLastLocation;
     public void onProviderDisabled(String provider) {
 
     }
+
+
 }
