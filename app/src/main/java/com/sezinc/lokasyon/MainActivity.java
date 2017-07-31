@@ -184,6 +184,8 @@ protected Location mLastLocation;
               map.addMarker(new MarkerOptions().position(point).title(txtLatLong));
                 map.animateCamera(CameraUpdateFactory.newLatLng(point));
 
+                //test
+
 
             }
         });
